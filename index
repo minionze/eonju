@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>수행평가 일정 달력</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- OCR 기능을 위한 Tesseract.js 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>수행평가 일정 달력</h1>
+      <p>사진을 업로드하면 수행평가 일정을 자동으로 분석해 달력에 등록해 줍니다.</p>
+    </header>
+
+    <!-- 사진 업로드 및 인식 섹션 -->
+    <section class="upload-card">
+      <h2>사진으로 일정 등록하기</h2>
+      <div class="upload-controls">
+        <input type="file" id="imageInput" accept="image/*">
+        <button id="scanBtn" class="btn primary-btn">사진 분석 및 일정 추가</button>
+      </div>
+      <div id="statusMessage" class="status-message"></div>
+    </section>
+
+    <!-- 달력 섹션 -->
+    <section class="calendar-card">
+      <div class="calendar-nav">
+        <button id="prevMonthBtn" class="btn nav-btn">&lt;</button>
+        <h2 id="calendarTitle"></h2>
+        <button id="nextMonthBtn" class="btn nav-btn">&gt;</button>
+      </div>
+      <div class="weekdays">
+        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+      </div>
+      <div id="calendarDays" class="days-grid"></div>
+    </section>
+
+    <!-- 일정 직접 입력 및 목록 섹션 -->
+    <section class="events-card">
+      <h2>수행평가 목록 & 수동 추가</h2>
+      <form id="addEventForm" class="event-form">
+        <input type="date" id="eventDate" required>
+        <input type="text" id="eventTitle" placeholder="과목 및 수행평가 내용 입력" required>
+        <button type="submit" class="btn secondary-btn">추가</button>
+      </form>
+      <ul id="eventList" class="event-list"></ul>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
