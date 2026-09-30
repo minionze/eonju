@@ -3,53 +3,392 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>수행평가 일정 달력</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- OCR 기능을 위한 Tesseract.js 라이브러리 -->
+  <title>스마트 수행평가 달력 매니저</title>
+  
+  <!-- FullCalendar CSS & JS -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+  <!-- Tesseract.js (이미지 OCR 텍스트 인식) -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    body { margin: 0; padding: 20px; background-color: #f1f5f9; color: #1e293b; }
+    
+    .header { text-align: center; margin-bottom: 25px; }
+    .header h1 { margin: 0; font-size: 1.8rem; color: #0f172a; }
+    .header p { margin: 5px 0 0 0; color: #64748b; font-size: 0.95rem; }
+
+    .container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+    @media (max-width: 850px) { .container { grid-template-columns: 1fr; } }
+    
+    .panel { background: white; padding: 22px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    h2 { margin-top: 0; font-size: 1.15rem; color: #334155; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }
+    
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #475569; }
+    input, select, textarea, button { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem; outline: none; transition: all 0.2s; }
+    input:focus, select:focus, textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
+    
+    input[type="color"] { height: 45px; padding: 2px 5px; cursor: pointer; }
+    
+    .btn-primary { background-color: #4f46e5; color: white; border: none; font-weight: bold; cursor: pointer; }
+    .btn-primary:hover { background-color: #4338ca; }
+    .btn-danger { background-color: #ef4444; color: white; border: none; font-weight: bold; cursor: pointer; }
+    .btn-danger:hover { background-color: #dc2626; }
+    
+    .ocr-box { border: 2px dashed #a5b4fc; padding: 18px; text-align: center; border-radius: 10px; background: #eff6ff; margin-bottom: 20px; }
+    .ocr-label { cursor: pointer; color: #4338ca; font-weight: bold; display: block; }
+    #status { font-size: 0.8rem; color: #4f46e5; margin-top: 8px; font-weight: 600; }
+    
+    #calendar { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+    /* 모달 공통 스타일 */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1000;
+      justify-content: center; align-items: center; padding: 20px;
+    }
+    .modal-content {
+      background: white; padding: 28px; border-radius: 16px; width: 100%; max-width: 420px;
+      max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); animation: modalPop 0.25s ease-out;
+    }
+    @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    
+    /* 상세보기 모달 텍스트 영역 */
+    .detail-desc {
+      font-size: 0.9rem; color: #475569; white-space: pre-wrap; 
+      background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 20px;
+    }
+    .close-btn {
+      float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;
+    }
+    .close-btn:hover { color: #334155; }
+  </style>
 </head>
 <body>
-  <div class="app-container">
-    <header class="app-header">
-      <h1>수행평가 일정 달력</h1>
-      <p>사진을 업로드하면 수행평가 일정을 자동으로 분석해 달력에 등록해 줍니다.</p>
-    </header>
 
-    <!-- 사진 업로드 및 인식 섹션 -->
-    <section class="upload-card">
-      <h2>사진으로 일정 등록하기</h2>
-      <div class="upload-controls">
-        <input type="file" id="imageInput" accept="image/*">
-        <button id="scanBtn" class="btn primary-btn">사진 분석 및 일정 추가</button>
-      </div>
-      <div id="statusMessage" class="status-message"></div>
-    </section>
+<div class="header">
+  <h1>📚 수행평가 스마트 달력</h1>
+  <p>일정 등록부터 평가 후 나의 회고(느낀 점)까지 꼼꼼하게 관리하세요!</p>
+</div>
 
-    <!-- 달력 섹션 -->
-    <section class="calendar-card">
-      <div class="calendar-nav">
-        <button id="prevMonthBtn" class="btn nav-btn">&lt;</button>
-        <h2 id="calendarTitle"></h2>
-        <button id="nextMonthBtn" class="btn nav-btn">&gt;</button>
-      </div>
-      <div class="weekdays">
-        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
-      </div>
-      <div id="calendarDays" class="days-grid"></div>
-    </section>
+<div class="container">
+  <!-- 1단계 입력 패널 -->
+  <div class="panel">
+    <h2>📷 1단계: 촬영 또는 직접 작성</h2>
+    
+    <div class="ocr-box">
+      <label for="imageInput" class="ocr-label">📷 종이 유인물 촬영 / 사진 선택</label>
+      <input type="file" id="imageInput" accept="image/*" capture="environment" style="display:none;">
+      <div id="status"></div>
+    </div>
 
-    <!-- 일정 직접 입력 및 목록 섹션 -->
-    <section class="events-card">
-      <h2>수행평가 목록 & 수동 추가</h2>
-      <form id="addEventForm" class="event-form">
-        <input type="date" id="eventDate" required>
-        <input type="text" id="eventTitle" placeholder="과목 및 수행평가 내용 입력" required>
-        <button type="submit" class="btn secondary-btn">추가</button>
-      </form>
-      <ul id="eventList" class="event-list"></ul>
-    </section>
+    <form id="step1Form">
+      <div class="form-group">
+        <label for="title">수행평가 제목</label>
+        <input type="text" id="title" placeholder="예: 단원 서술형 평가" required>
+      </div>
+      <div class="form-group">
+        <label for="date">제출 / 마감 날짜</label>
+        <input type="date" id="date" required>
+      </div>
+      <div class="form-group">
+        <label for="period">평가 교시</label>
+        <select id="period" required>
+          <option value="">교시를 선택하세요</option>
+          <option value="1교시">1교시</option>
+          <option value="2교시">2교시</option>
+          <option value="3교시">3교시</option>
+          <option value="4교시">4교시</option>
+          <option value="5교시">5교시</option>
+          <option value="6교시">6교시</option>
+          <option value="7교시">7교시</option>
+          <option value="기타/전일">기타 / 하루 종일</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="eventColor">🎨 달력 표시 색상</label>
+        <input type="color" id="eventColor" value="#4f46e5">
+      </div>
+      <div class="form-group">
+        <label for="memo">상세 내용 (촬영 시 자동 추출)</label>
+        <textarea id="memo" rows="3" placeholder="준비물, 주의사항 등 내용 입력"></textarea>
+      </div>
+      <button type="submit" class="btn-primary">다음: 중요도 평가하기 ➡️</button>
+    </form>
   </div>
 
-  <script src="script.js"></script>
+  <!-- 달력 출력 패널 -->
+  <div id="calendar"></div>
+</div>
+
+<!-- 2단계: 중요도 평가 모달 창 -->
+<div class="modal-overlay" id="evalModal">
+  <div class="modal-content">
+    <h2>⚖️ 2단계: 중요도 산출 평가</h2>
+    <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 20px;">
+      수행평가 조건에 맞춰 중요도(별 개수)를 자동 계산합니다.
+    </p>
+    
+    <form id="evalForm">
+      <div class="form-group">
+        <label for="subject">수행평가 과목</label>
+        <select id="subject" required>
+          <option value="">과목을 선택하세요</option>
+          <option value="국어">국어 (주요과목 +⭐)</option>
+          <option value="수학">수학 (주요과목 +⭐)</option>
+          <option value="영어">영어 (주요과목 +⭐)</option>
+          <option value="사회">사회</option>
+          <option value="과학">과학</option>
+          <option value="기타">기타 과목</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="score">수행평가 점수 (배점)</label>
+        <input type="number" id="score" min="0" max="100" placeholder="10점 초과 시 중요도 +⭐" required>
+      </div>
+
+      <button type="submit" class="btn-primary" style="background-color: #10b981;">달력에 최종 등록</button>
+      <button type="button" class="btn-danger" style="margin-top: 10px;" onclick="document.getElementById('evalModal').style.display='none'">취소</button>
+    </form>
+  </div>
+</div>
+
+<!-- 상세 보기 & 후기(회고) 작성 모달 창 -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-content" style="max-width: 500px;">
+    <div>
+      <span class="close-btn" id="closeDetail">&times;</span>
+      <h2 id="detailTitle" style="margin-bottom: 15px; font-size: 1.2rem; padding-right: 20px;"></h2>
+    </div>
+    
+    <div id="detailDesc" class="detail-desc"></div>
+    
+    <hr style="border: 0; height: 1px; background: #e2e8f0; margin: 20px 0;">
+    
+    <h3 style="font-size: 1.05rem; color: #334155; margin-bottom: 15px; margin-top: 0;">📝 평가 후기 (회고 작성)</h3>
+    <form id="reflectionForm">
+      <div class="form-group">
+        <label for="goodPoint">😊 좋았던 점 (잘한 점)</label>
+        <textarea id="goodPoint" rows="2" placeholder="어떤 점을 잘했는지 칭찬해 주세요!"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="badPoint">😥 아쉬운 점 (보완할 점)</label>
+        <textarea id="badPoint" rows="2" placeholder="다음엔 어떻게 다르게 할지 적어보세요."></textarea>
+      </div>
+      <div class="form-group">
+        <label for="feeling">💡 전체 느낀 점</label>
+        <textarea id="feeling" rows="2" placeholder="이번 수행평가를 마치며 든 생각이나 소감을 적어보세요."></textarea>
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button type="button" id="btnDelete" class="btn-danger" style="flex: 1;">일정 삭제</button>
+        <button type="submit" class="btn-primary" style="flex: 2;">후기 저장하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let calendar;
+  let events = JSON.parse(localStorage.getItem('evaluations')) || [];
+  let tempEventData = {}; 
+  let currentEventId = null; // 현재 클릭된 일정 ID 추적용
+
+  document.addEventListener('DOMContentLoaded', function() {
+    requestNotificationPermission();
+    checkTodayNotifications();
+
+    // 1. FullCalendar 설정
+    const calendarEl = document.getElementById('calendar');
+    calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'ko',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,listWeek'
+      },
+      events: events,
+      // 달력 일정 클릭 시 상세보기 & 회고 모달 열기
+      eventClick: function(info) {
+        currentEventId = info.event.id;
+        const props = info.event.extendedProps;
+        
+        document.getElementById('detailTitle').innerText = info.event.title;
+        document.getElementById('detailDesc').innerText = props.description || '상세 내용 없음';
+        
+        // 저장된 후기(회고) 데이터 불러오기
+        document.getElementById('goodPoint').value = props.goodPoint || '';
+        document.getElementById('badPoint').value = props.badPoint || '';
+        document.getElementById('feeling').value = props.feeling || '';
+        
+        document.getElementById('detailModal').style.display = 'flex';
+      }
+    });
+    calendar.render();
+
+    // 2. 종이 사진 촬영 및 OCR (Tesseract.js)
+    const imageInput = document.getElementById('imageInput');
+    const statusDiv = document.getElementById('status');
+
+    imageInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      statusDiv.innerText = '🔍 글자를 분석하는 중입니다...';
+      try {
+        const worker = await Tesseract.createWorker('kor+eng');
+        const ret = await worker.recognize(file);
+        const text = ret.data.text;
+        await worker.terminate();
+
+        statusDiv.innerText = '✅ 인식 완료!';
+        document.getElementById('memo').value = text;
+        
+        const dateMatch = text.match(/\d{4}[-./]\d{1,2}[-./]\d{1,2}/) || text.match(/(\d{1,2})월\s*(\d{1,2})일/);
+        if (dateMatch) {
+          if (dateMatch[0].includes('월')) {
+            const now = new Date();
+            const month = dateMatch[1].padStart(2, '0');
+            const day = dateMatch[2].padStart(2, '0');
+            document.getElementById('date').value = `${now.getFullYear()}-${month}-${day}`;
+          } else {
+            document.getElementById('date').value = dateMatch[0].replace(/[/.]/g, '-');
+          }
+        }
+
+        const periodMatch = text.match(/([1-7])\s*교시/);
+        if (periodMatch) {
+          document.getElementById('period').value = `${periodMatch[1]}교시`;
+        }
+      } catch (err) {
+        statusDiv.innerText = '❌ 인식 실패. 직접 입력해 주세요.';
+      }
+    });
+
+    // 3. 1단계 작성 후 -> 중요도 평가 모달 열기
+    document.getElementById('step1Form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      tempEventData = {
+        title: document.getElementById('title').value,
+        date: document.getElementById('date').value,
+        period: document.getElementById('period').value,
+        color: document.getElementById('eventColor').value,
+        memo: document.getElementById('memo').value
+      };
+      document.getElementById('evalModal').style.display = 'flex';
+    });
+
+    // 4. 2단계 중요도 평가 제출 및 최종 달력 저장
+    document.getElementById('evalForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const subject = document.getElementById('subject').value;
+      const score = Number(document.getElementById('score').value);
+
+      let importanceLevel = 1;
+      if (score > 10) importanceLevel += 1;
+      if (['국어', '수학', '영어'].includes(subject)) importanceLevel += 1;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); 
+      const targetDate = new Date(tempEventData.date);
+      targetDate.setHours(0, 0, 0, 0); 
+
+      const diffTime = targetDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      if (diffDays <= 2) importanceLevel += 1;
+
+      let stars = '⭐'.repeat(importanceLevel);
+      let dDayText = diffDays === 0 ? 'D-Day' : (diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`);
+
+      // 이벤트 객체 (후기 데이터 공간 포함)
+      const newEvent = {
+        id: Date.now().toString(),
+        title: `${stars} [${tempEventData.period}] [${subject}] ${tempEventData.title}`,
+        start: tempEventData.date,
+        description: `[교시: ${tempEventData.period} / 남은 기간: ${dDayText} / 배점: ${score}점 / 과목: ${subject}]\n${tempEventData.memo}`,
+        backgroundColor: tempEventData.color,
+        borderColor: tempEventData.color,
+        goodPoint: '', // 좋았던 점
+        badPoint: '',  // 아쉬운 점
+        feeling: ''    // 느낀 점
+      };
+
+      events.push(newEvent);
+      saveAndRender();
+
+      document.getElementById('step1Form').reset();
+      document.getElementById('evalForm').reset();
+      document.getElementById('status').innerText = '';
+      document.getElementById('evalModal').style.display = 'none';
+      document.getElementById('eventColor').value = "#4f46e5";
+    });
+
+    // 5. 상세 보기 및 후기 모달 닫기
+    document.getElementById('closeDetail').addEventListener('click', function() {
+      document.getElementById('detailModal').style.display = 'none';
+    });
+
+    // 6. 후기(회고) 저장 기능
+    document.getElementById('reflectionForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      if (!currentEventId) return;
+
+      const eventIndex = events.findIndex(evt => evt.id === currentEventId);
+      if (eventIndex !== -1) {
+        // 입력한 후기 데이터를 배열에 업데이트
+        events[eventIndex].goodPoint = document.getElementById('goodPoint').value;
+        events[eventIndex].badPoint = document.getElementById('badPoint').value;
+        events[eventIndex].feeling = document.getElementById('feeling').value;
+        
+        saveAndRender();
+        alert('✨ 후기가 성공적으로 저장되었습니다!');
+        document.getElementById('detailModal').style.display = 'none';
+      }
+    });
+
+    // 7. 상세 모달 내 일정 삭제 버튼 기능
+    document.getElementById('btnDelete').addEventListener('click', function() {
+      if(confirm('정말로 이 일정을 삭제하시겠습니까?\n작성한 후기도 모두 지워집니다.')) {
+        events = events.filter(e => e.id !== currentEventId);
+        saveAndRender();
+        document.getElementById('detailModal').style.display = 'none';
+      }
+    });
+  });
+
+  // 로컬스토리지 저장 및 달력 동기화
+  function saveAndRender() {
+    localStorage.setItem('evaluations', JSON.stringify(events));
+    calendar.removeAllEvents();
+    calendar.addEventSource(events);
+  }
+
+  // 브라우저 알림 권한 요청 및 오늘 마감 알림
+  function requestNotificationPermission() {
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }
+
+  function checkTodayNotifications() {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayEvents = events.filter(e => e.start === todayStr);
+
+    todayEvents.forEach(evt => {
+      new Notification("📢 오늘 마감 수행평가 알림", {
+        body: `${evt.title}\n오늘 제출/평가날입니다! 확인하세요.`,
+        icon: 'https://cdn-icons-png.flaticon.com/512/2693/2693507.png'
+      });
+    });
+  }
+</script>
+
 </body>
 </html>
